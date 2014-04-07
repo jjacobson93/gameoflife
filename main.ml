@@ -1,27 +1,37 @@
-#load "graphics.cma"
-#load "unix.cma"
-
 (* matrix helper functions *)
 let matrix = Array.make_matrix;;
 let matrix_copy m = Array.map Array.copy m;; (* copies 2d array (matrix) *)
 
 let square_size = 15;;
 
-let random m n uni = 
-	Random.self_init();
-	for i = 0 to m do
-		for j = 0 to n do
-			uni.(i).(j) <- Random.int 2
-		done
-	done;;
-	
-
+(* cell patterns *)
 let glider_gun = [(1, 26); (2, 24); (2, 26); (3, 14); (3, 15);
 	(3, 22); (3, 23); (3, 36); (3, 37); (4, 13); (4, 17); 
 	(4, 22); (4, 23); (4, 36); (4, 37); (5, 2); (5, 3); 
 	(5, 12); (5, 18); (5, 22); (5, 23); (6, 2); (6, 3); 
 	(6, 12); (6, 16); (6, 18); (6, 19); (6, 24); (6, 26); 
 	(7, 12); (7, 18); (7, 26); (8, 13); (8, 17); (9, 14); (9, 15)];;
+
+let spaceship = [(5, 2); (7, 2); (5, 5); (6, 6); (7, 6);
+	(8, 3); (8, 4); (8, 5); (8, 6)];;
+
+let cooldesign = [(5, 5); (6, 5); (7, 5); (9, 5); (10, 5); (11, 5);
+	(5, 10); (6, 10); (7, 10); (9, 10); (10, 10); (11, 10);
+	(5, 12); (6, 12); (7, 12); (9, 12); (10, 12); (11, 12);
+	(5, 17); (6, 17); (7, 17); (9, 17); (10, 17); (11, 17);
+	(3, 7); (3, 8); (3, 9); (3, 13); (3, 14); (3, 15);
+	(8, 7); (8, 8); (8, 9); (8, 13); (8, 14); (8, 15);
+	(10, 7); (10, 8); (10, 9); (10, 13); (10, 14); (10, 15);
+	(15, 7); (15, 8); (15, 9); (15, 13); (15, 14); (15, 15);];;
+
+let pulsar = [(5, 5); (6, 5); (7, 5); (11, 5); (12, 5); (13, 5);
+	(5, 10); (6, 10); (7, 10); (11, 10); (12, 10); (13, 10);
+	(5, 12); (6, 12); (7, 12); (11, 12); (12, 12); (13, 12);
+	(5, 17); (6, 17); (7, 17); (11, 17); (12, 17); (13, 17);
+	(3, 7); (3, 8); (3, 9); (3, 13); (3, 14); (3, 15);
+	(8, 7); (8, 8); (8, 9); (8, 13); (8, 14); (8, 15);
+	(10, 7); (10, 8); (10, 9); (10, 13); (10, 14); (10, 15);
+	(15, 7); (15, 8); (15, 9); (15, 13); (15, 14); (15, 15);];;
 
 (* Set cells from a list of tuples *)
 let set_cells cells uni =
@@ -85,31 +95,41 @@ let draw_grid uni =
 			done
 		done;;
 
+(* Recursive wrapper for Thread.delay to handle errors *)
+let rec thread_delay sec =
+	try
+		Thread.delay sec
+	with
+		Unix.Unix_error(Unix.EINTR, _, _) -> thread_delay sec;;
+
 (* main code *)
-(* Usage: life [option] [gun|random] width height *)
+(* Usage: life [glidergun|spaceship|pulsar] width height *)
 
 let () = 
 	let argc = Array.length Sys.argv in
-	let opt = if argc > 1 then Sys.argv.(1) else "NONE" in
-	let file_name = if opt == "-t" && argc > 2 then
-		Sys.argv.(2) else "NONE" in
+	let opt = if argc < 2 then glider_gun else
+		match Sys.argv.(1) with
+		 | "glidergun" -> glider_gun
+		 | "spaceship" -> spaceship
+		 | "pulsar" -> pulsar
+		 | "cool" -> cooldesign
+		 | "-h" -> Printf.printf
+            "Usage: %s [glidergun|spaceship|pulsar] width height\n" Sys.argv.(0);
+            exit 0
+		 | _ -> glider_gun in
 
-	let width = if opt != "-t" && argc > 3 then
+	let width = if argc > 2 then
+		max 80 (int_of_string Sys.argv.(2))
+		else 80 in
+	let height = if argc > 3 then
 		max 40 (int_of_string Sys.argv.(3))
-		else if opt == "-t" && argc > 4 then
-		max 40 (int_of_string Sys.argv.(4))
 		else 40 in
-	let height = if opt != "-t" && argc > 4 then
-		max 22 (int_of_string Sys.argv.(4))
-		else if opt == "-t" && argc > 5 then
-		max 22 (int_of_string Sys.argv.(5))
-		else 22 in
-
-	Graphics.open_graph (Printf.sprintf " %dx%d" (width * square_size) (height * square_size));
 	let universe = ref (matrix height width 0) in
-	set_cells glider_gun !universe;
+	
+	Graphics.open_graph (Printf.sprintf " %dx%d" (width * square_size) (height * square_size));
+	set_cells opt !universe;
 	while true do
 		draw_grid !universe;
-		Unix.sleep 1;
+		thread_delay 0.1;
 		universe := matrix_copy (run_iteration !universe);
 	done;;
