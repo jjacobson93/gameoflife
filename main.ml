@@ -34,8 +34,8 @@ let pulsar = [(5, 5); (6, 5); (7, 5); (11, 5); (12, 5); (13, 5);
 	(15, 7); (15, 8); (15, 9); (15, 13); (15, 14); (15, 15);];;
 
 (* Set cells from a list of tuples *)
-let set_cells cells uni =
-	List.iter (fun (i, j) -> uni.(i).(j) <- 1) cells;;
+let set_cells cells offset uni =
+	List.iter (fun (i, j) -> uni.(i + offset).(j + offset) <- 1) cells;;
 
 (* the core of the game: checks if cell i,j is alive or dead *)
 let live_or_die i j uni =
@@ -103,7 +103,7 @@ let rec thread_delay sec =
 		Unix.Unix_error(Unix.EINTR, _, _) -> thread_delay sec;;
 
 (* main code *)
-(* Usage: life [glidergun|spaceship|pulsar] width height *)
+(* Usage: life [glidergun|spaceship|pulsar|cool] width height *)
 
 let () = 
 	let argc = Array.length Sys.argv in
@@ -114,22 +114,25 @@ let () =
 		 | "pulsar" -> pulsar
 		 | "cool" -> cooldesign
 		 | "-h" -> Printf.printf
-            "Usage: %s [glidergun|spaceship|pulsar] width height\n" Sys.argv.(0);
+            "Usage: %s [glidergun|spaceship|pulsar|cool] width height delay\n" Sys.argv.(0);
             exit 0
 		 | _ -> glider_gun in
 
 	let width = if argc > 2 then
-		max 80 (int_of_string Sys.argv.(2))
+		max 40 (int_of_string Sys.argv.(2))
 		else 80 in
 	let height = if argc > 3 then
-		max 40 (int_of_string Sys.argv.(3))
+		max 30 (int_of_string Sys.argv.(3))
 		else 40 in
+	let delay = if argc > 4 then
+		max 0.05 (try (float_of_string Sys.argv.(4)) with _ -> 0.05)
+		else 0.1 in
 	let universe = ref (matrix height width 0) in
 	
 	Graphics.open_graph (Printf.sprintf " %dx%d" (width * square_size) (height * square_size));
-	set_cells opt !universe;
+	set_cells opt 5 !universe;
 	while true do
 		draw_grid !universe;
-		thread_delay 0.1;
+		thread_delay delay;
 		universe := matrix_copy (run_iteration !universe);
 	done;;
